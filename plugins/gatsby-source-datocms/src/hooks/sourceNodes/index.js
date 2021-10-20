@@ -1,0 +1,327 @@
+const fs = require('fs-extra');
+const createNodeFromEntity = require('./createNodeFromEntity');
+const destroyEntityNode = require('./destroyEntityNode');
+const { prefixId, CODES } = require('../onPreInit/errorMap');
+const Queue = require('promise-queue');
+const { pascalize } = require('humps');
+const uniq = require('lodash.uniq');
+const visit = require('unist-util-visit');
+const {
+  isInlineItem,
+  isItemLink,
+  isBlock,
+} = require('datocms-structured-text-utils');
+
+const { getClient, getLoader } = require('../../utils');
+
+const findAll = (document, predicate) => {
+  const result = [];
+
+  visit(document, predicate, node => {
+    result.push(node);
+  });
+
+  return result;
+};
+
+const datocmsCreateNodeManifest = ({
+  node,
+  unstable_createNodeManifest,
+  previewMode,
+  createNodeId,
+}) => {
+  const createNodeManifestIsSupported =
+    typeof unstable_createNodeManifest === `function`;
+
+  const shouldCreateNodeManifest = createNodeManifestIsSupported && previewMode;
+
+  if (true) {
+    // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
+    node.id = createNodeId(`${node.type}-`);
+    const manifestId = `${node.id}-${node.meta.updated_at}`;
+
+    console.info(`DatoCMS: Creating node manifest with id ${manifestId}`);
+    console.log(JSON.stringify(node));
+
+    unstable_createNodeManifest({
+      manifestId,
+      node,
+    });
+  } else if (previewMode && !createNodeManifestIsSupported) {
+    console.warn(
+      `DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.`,
+    );
+  }
+};
+
+module.exports = async (
+  {
+    actions,
+    getNode,
+    getNodesByType,
+    reporter,
+    parentSpan,
+    schema,
+    store,
+    webhookBody,
+  },
+  {
+    apiToken,
+    environment,
+    disableLiveReload,
+    previewMode,
+    instancePrefix,
+    apiUrl,
+    localeFallbacks: rawLocaleFallbacks,
+  },
+) => {
+  const localeFallbacks = rawLocaleFallbacks || {};
+  const { unstable_createNodeManifest, createNodeId } = actions;
+
+  if (!apiToken) {
+    const errorText = `API token must be provided!`;
+    reporter.panic(
+      {
+        id: prefixId(CODES.MissingAPIToken),
+        context: { sourceMessage: errorText },
+      },
+      new Error(errorText),
+    );
+  }
+
+  if (process.env.GATSBY_IS_PREVIEW === `true`) {
+    previewMode = true;
+  }
+
+  const client = getClient({ apiToken, previewMode, environment, apiUrl });
+  const loader = getLoader({ apiToken, previewMode, environment, apiUrl });
+
+  const program = store.getState().program;
+  const cacheDir = `${program.directory}/.cache/datocms-assets`;
+
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir);
+  }
+
+  const context = {
+    entitiesRepo: loader.entitiesRepo,
+    actions,
+    getNode,
+    getNodesByType,
+    localeFallbacks,
+    schema,
+    store,
+    cacheDir,
+    generateType: type =>
+      `DatoCms${instancePrefix ? pascalize(instancePrefix) : ''}${type}`,
+  };
+
+  if (webhookBody && Object.keys(webhookBody).length) {
+    const { entity_id, entity_type, event_type } = webhookBody;
+    reporter.info(
+      `Received ${event_type} event for ${entity_type} ${entity_id} from DatoCMS`,
+    );
+    const changesActivity = reporter.activityTimer(
+      `loading DatoCMS content changes`,
+      {
+        parentSpan,
+      },
+    );
+    changesActivity.start();
+
+    switch (entity_type) {
+      case 'item':
+        if (
+          event_type === 'publish' ||
+          event_type === `update` ||
+          event_type === 'create'
+        ) {
+          const payload = await client.items.all(
+            {
+              'filter[ids]': [entity_id].join(','),
+              version: previewMode ? 'draft' : 'published',
+            },
+            { deserializeResponse: false, allPages: true },
+          );
+          if (payload) {
+            // `rich_text`, `links`, `link` fields link to other entities and we need to
+            // fetch them separately to make sure we have all the data
+            const linkedEntitiesIdsToFetch = payload.data.reduce(
+              (collectedIds, payload) => {
+                datocmsCreateNodeManifest({
+                  node: payload,
+                  unstable_createNodeManifest,
+                  previewMode,
+                  createNodeId,
+                });
+                const item_type_rel = payload.relationships.item_type.data;
+                const itemTypeForThis = loader.entitiesRepo.findEntity(
+                  item_type_rel.type,
+                  item_type_rel.id,
+                );
+                const fieldsToResolve = itemTypeForThis.fields.filter(
+                  fieldDef =>
+                    [`rich_text`, `links`, `link`, `structured_text`].includes(
+                      fieldDef.fieldType,
+                    ),
+                );
+
+                function addRawValueToCollectedIds(fieldInfo, fieldRawValue) {
+                  if (
+                    ['links', 'rich_text'].includes(fieldInfo.fieldType) &&
+                    Array.isArray(fieldRawValue)
+                  ) {
+                    fieldRawValue.forEach(collectedIds.add.bind(collectedIds));
+                  } else if (fieldInfo.fieldType === 'link' && fieldRawValue) {
+                    collectedIds.add(fieldRawValue);
+                  } else if (
+                    fieldInfo.fieldType === 'structured_text' &&
+                    fieldRawValue
+                  ) {
+                    uniq(
+                      findAll(fieldRawValue.document, [
+                        isInlineItem,
+                        isItemLink,
+                        isBlock,
+                      ]).map(node => node.item),
+                    ).forEach(collectedIds.add.bind(collectedIds));
+                  }
+                }
+
+                fieldsToResolve.forEach(fieldInfo => {
+                  const fieldRawValue = payload.attributes[fieldInfo.apiKey];
+                  if (fieldInfo.localized) {
+                    // Localized fields raw values are object with lang codes
+                    // as keys. We need to iterate over properties to
+                    // collect ids from all languages
+                    Object.values(fieldRawValue).forEach(
+                      fieldTranslationRawValue => {
+                        addRawValueToCollectedIds(
+                          fieldInfo,
+                          fieldTranslationRawValue,
+                        );
+                      },
+                    );
+                  } else {
+                    addRawValueToCollectedIds(fieldInfo, fieldRawValue);
+                  }
+                });
+
+                return collectedIds;
+              },
+              new Set(),
+            );
+
+            const linkedEntitiesPayload = await client.items.all(
+              {
+                'filter[ids]': Array.from(linkedEntitiesIdsToFetch).join(','),
+                version: previewMode ? 'draft' : 'published',
+              },
+              {
+                deserializeResponse: false,
+                allPages: true,
+              },
+            );
+
+            // attach included portion of payload
+            payload.included = linkedEntitiesPayload.data;
+
+            loader.entitiesRepo.upsertEntities(payload);
+          }
+        } else if (event_type === 'unpublish' || event_type === 'delete') {
+          loader.entitiesRepo.destroyEntities('item', [entity_id]);
+        } else {
+          reporter.warn(`Invalid event type ${event_type}`);
+        }
+        break;
+
+      case 'upload':
+        if (event_type === 'create' || event_type === `update`) {
+          const payload = await client.uploads.all(
+            {
+              'filter[ids]': [entity_id].join(','),
+              version: previewMode ? 'draft' : 'published',
+            },
+            { deserializeResponse: false, allPages: true },
+          );
+          if (payload) {
+            loader.entitiesRepo.upsertEntities(payload);
+          }
+        } else if (event_type === 'delete') {
+          loader.entitiesRepo.destroyEntities('upload', [entity_id]);
+        } else {
+          reporter.warn(`Invalid event type ${event_type}`);
+        }
+        break;
+      default:
+        reporter.warn(`Invalid entity type ${entity_type}`);
+        break;
+    }
+    changesActivity.end();
+    return;
+  }
+
+  let activity = reporter.activityTimer(`loading DatoCMS content`, {
+    parentSpan,
+  });
+  activity.start();
+
+  loader.entitiesRepo.addUpsertListener(entity => {
+    createNodeFromEntity(entity, context);
+  });
+
+  loader.entitiesRepo.addDestroyListener(entity => {
+    destroyEntityNode(entity, context);
+  });
+
+  await loader.load();
+
+  // only do this if previewMode
+  const payload = await client.items.all(
+    { version: `draft` },
+    { deserializeResponse: false, allPages: true },
+  );
+
+  console.log(`LENGTH`, payload.data.length);
+  payload.data.forEach(node => {
+    // if (
+    //   node.meta.updated_at &&
+    //   Date.now() - new Date(node.meta.updated_at).getTime() <=
+    //     // milliseconds
+    //     1000 *
+    //       // seconds
+    //       60 *
+    //       // minutes
+    //       60 *
+    //       // hours
+    //       48
+    // ) {
+    datocmsCreateNodeManifest({
+      node,
+      unstable_createNodeManifest,
+      previewMode,
+      createNodeId,
+    });
+    // }
+  });
+
+  activity.end();
+
+  const queue = new Queue(1, Infinity);
+
+  // if (process.env.NODE_ENV !== `production` && !disableLiveReload) {
+  //   loader.watch(loadPromise => {
+  //     queue.add(async () => {
+  //       const activity = reporter.activityTimer(
+  //         `detected change in DatoCMS content, loading new data`,
+  //         { parentSpan },
+  //       );
+  //       activity.start();
+
+  //       await loadPromise;
+
+  //       activity.end();
+  //     });
+  //   });
+  // }
+};
