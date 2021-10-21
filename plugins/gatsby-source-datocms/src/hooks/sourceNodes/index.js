@@ -26,22 +26,27 @@ const findAll = (document, predicate) => {
 
 const datocmsCreateNodeManifest = ({
   node,
+  entity_id,
   unstable_createNodeManifest,
   previewMode,
-  createNodeId,
 }) => {
   const createNodeManifestIsSupported =
     typeof unstable_createNodeManifest === `function`;
 
   const shouldCreateNodeManifest = createNodeManifestIsSupported && previewMode;
-
+  console.log(JSON.stringify(node));
+  
   if (true) {
     // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-    node.id = createNodeId(`${node.type}-`);
-    const manifestId = `${node.id}-${node.meta.updated_at}`;
+    // Example node.id: "DatoCmsPost-1233566-en"
+    const manifestId = `${node.id}-${node.meta.updated_at}`
+    node.id = `DatoCMSPost-${entity_id}-en`
+    console.log(entity_id); 
 
     console.info(`DatoCMS: Creating node manifest with id ${manifestId}`);
-    console.log(JSON.stringify(node));
+    // console.log(JSON.stringify(node));
+    
+    
 
     unstable_createNodeManifest({
       manifestId,
@@ -76,7 +81,7 @@ module.exports = async (
   },
 ) => {
   const localeFallbacks = rawLocaleFallbacks || {};
-  const { unstable_createNodeManifest, createNodeId } = actions;
+  const { unstable_createNodeManifest } = actions;
 
   if (!apiToken) {
     const errorText = `API token must be provided!`;
@@ -150,9 +155,9 @@ module.exports = async (
               (collectedIds, payload) => {
                 datocmsCreateNodeManifest({
                   node: payload,
+                  entity_id,
                   unstable_createNodeManifest,
                   previewMode,
-                  createNodeId,
                 });
                 const item_type_rel = payload.relationships.item_type.data;
                 const itemTypeForThis = loader.entitiesRepo.findEntity(
@@ -298,9 +303,10 @@ module.exports = async (
     // ) {
     datocmsCreateNodeManifest({
       node,
+      entity_id,
       unstable_createNodeManifest,
       previewMode,
-      createNodeId,
+      getNode,
     });
     // }
   });

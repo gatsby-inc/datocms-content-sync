@@ -42,18 +42,21 @@ var findAll = function findAll(document, predicate) {
 
 var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
   var node = _ref.node,
+      entity_id = _ref.entity_id,
       unstable_createNodeManifest = _ref.unstable_createNodeManifest,
-      previewMode = _ref.previewMode,
-      createNodeId = _ref.createNodeId;
+      previewMode = _ref.previewMode;
   var createNodeManifestIsSupported = typeof unstable_createNodeManifest === "function";
   var shouldCreateNodeManifest = createNodeManifestIsSupported && previewMode;
+  console.log(JSON.stringify(node));
 
   if (true) {
     // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-    node.id = createNodeId("".concat(node.type, "-"));
+    // Example node.id: "DatoCmsPost-1233566-en"
     var manifestId = "".concat(node.id, "-").concat(node.meta.updated_at);
-    console.info("DatoCMS: Creating node manifest with id ".concat(manifestId));
-    console.log(JSON.stringify(node));
+    node.id = "DatoCMSPost-".concat(entity_id, "-en");
+    console.log(entity_id);
+    console.info("DatoCMS: Creating node manifest with id ".concat(manifestId)); // console.log(JSON.stringify(node));
+
     unstable_createNodeManifest({
       manifestId: manifestId,
       node: node
@@ -65,7 +68,7 @@ var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
 
 module.exports = /*#__PURE__*/function () {
   var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref2, _ref3) {
-    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, localeFallbacks, unstable_createNodeManifest, createNodeId, errorText, client, loader, program, cacheDir, context, entity_id, entity_type, event_type, changesActivity, _payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload2, activity, payload, queue;
+    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, localeFallbacks, unstable_createNodeManifest, errorText, client, loader, program, cacheDir, context, _entity_id, entity_type, event_type, changesActivity, _payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload2, activity, payload, queue;
 
     return regeneratorRuntime.wrap(function _callee$(_context) {
       while (1) {
@@ -74,7 +77,7 @@ module.exports = /*#__PURE__*/function () {
             actions = _ref2.actions, getNode = _ref2.getNode, getNodesByType = _ref2.getNodesByType, reporter = _ref2.reporter, parentSpan = _ref2.parentSpan, schema = _ref2.schema, store = _ref2.store, webhookBody = _ref2.webhookBody;
             apiToken = _ref3.apiToken, environment = _ref3.environment, disableLiveReload = _ref3.disableLiveReload, previewMode = _ref3.previewMode, instancePrefix = _ref3.instancePrefix, apiUrl = _ref3.apiUrl, rawLocaleFallbacks = _ref3.localeFallbacks;
             localeFallbacks = rawLocaleFallbacks || {};
-            unstable_createNodeManifest = actions.unstable_createNodeManifest, createNodeId = actions.createNodeId;
+            unstable_createNodeManifest = actions.unstable_createNodeManifest;
 
             if (!apiToken) {
               errorText = "API token must be provided!";
@@ -128,8 +131,8 @@ module.exports = /*#__PURE__*/function () {
               break;
             }
 
-            entity_id = webhookBody.entity_id, entity_type = webhookBody.entity_type, event_type = webhookBody.event_type;
-            reporter.info("Received ".concat(event_type, " event for ").concat(entity_type, " ").concat(entity_id, " from DatoCMS"));
+            _entity_id = webhookBody.entity_id, entity_type = webhookBody.entity_type, event_type = webhookBody.event_type;
+            reporter.info("Received ".concat(event_type, " event for ").concat(entity_type, " ").concat(_entity_id, " from DatoCMS"));
             changesActivity = reporter.activityTimer("loading DatoCMS content changes", {
               parentSpan: parentSpan
             });
@@ -146,7 +149,7 @@ module.exports = /*#__PURE__*/function () {
 
             _context.next = 23;
             return client.items.all({
-              'filter[ids]': [entity_id].join(','),
+              'filter[ids]': [_entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
               deserializeResponse: false,
@@ -166,9 +169,9 @@ module.exports = /*#__PURE__*/function () {
             linkedEntitiesIdsToFetch = _payload.data.reduce(function (collectedIds, payload) {
               datocmsCreateNodeManifest({
                 node: payload,
+                entity_id: _entity_id,
                 unstable_createNodeManifest: unstable_createNodeManifest,
-                previewMode: previewMode,
-                createNodeId: createNodeId
+                previewMode: previewMode
               });
               var item_type_rel = payload.relationships.item_type.data;
               var itemTypeForThis = loader.entitiesRepo.findEntity(item_type_rel.type, item_type_rel.id);
@@ -225,7 +228,7 @@ module.exports = /*#__PURE__*/function () {
 
           case 33:
             if (event_type === 'unpublish' || event_type === 'delete') {
-              loader.entitiesRepo.destroyEntities('item', [entity_id]);
+              loader.entitiesRepo.destroyEntities('item', [_entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
@@ -241,7 +244,7 @@ module.exports = /*#__PURE__*/function () {
 
             _context.next = 38;
             return client.uploads.all({
-              'filter[ids]': [entity_id].join(','),
+              'filter[ids]': [_entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
               deserializeResponse: false,
@@ -260,7 +263,7 @@ module.exports = /*#__PURE__*/function () {
 
           case 42:
             if (event_type === 'delete') {
-              loader.entitiesRepo.destroyEntities('upload', [entity_id]);
+              loader.entitiesRepo.destroyEntities('upload', [_entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
@@ -317,9 +320,10 @@ module.exports = /*#__PURE__*/function () {
               // ) {
               datocmsCreateNodeManifest({
                 node: node,
+                entity_id: entity_id,
                 unstable_createNodeManifest: unstable_createNodeManifest,
                 previewMode: previewMode,
-                createNodeId: createNodeId
+                getNode: getNode
               }); // }
             });
             activity.end();
