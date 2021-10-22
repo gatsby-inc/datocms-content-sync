@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
 const createNodeFromEntity = require('./createNodeFromEntity');
+const buildItemTypeNode = require('./createNodeFromEntity/itemType');
 const destroyEntityNode = require('./destroyEntityNode');
 const { prefixId, CODES } = require('../onPreInit/errorMap');
 const Queue = require('promise-queue');
@@ -22,41 +23,6 @@ const findAll = (document, predicate) => {
   });
 
   return result;
-};
-
-const datocmsCreateNodeManifest = ({
-  node,
-  entity_id,
-  unstable_createNodeManifest,
-  previewMode,
-}) => {
-  const createNodeManifestIsSupported =
-    typeof unstable_createNodeManifest === `function`;
-
-  const shouldCreateNodeManifest = createNodeManifestIsSupported && previewMode;
-  console.log(JSON.stringify(node));
-  
-  if (true) {
-    // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-    // Example node.id: "DatoCmsPost-1233566-en"
-    const manifestId = `${node.id}-${node.meta.updated_at}`
-    node.id = `DatoCMSPost-${entity_id}-en`
-    console.log(entity_id); 
-
-    console.info(`DatoCMS: Creating node manifest with id ${manifestId}`);
-    // console.log(JSON.stringify(node));
-    
-    
-
-    unstable_createNodeManifest({
-      manifestId,
-      node,
-    });
-  } else if (previewMode && !createNodeManifestIsSupported) {
-    console.warn(
-      `DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.`,
-    );
-  }
 };
 
 module.exports = async (
@@ -117,6 +83,7 @@ module.exports = async (
     schema,
     store,
     cacheDir,
+    previewMode,
     generateType: type =>
       `DatoCms${instancePrefix ? pascalize(instancePrefix) : ''}${type}`,
   };
@@ -153,12 +120,6 @@ module.exports = async (
             // fetch them separately to make sure we have all the data
             const linkedEntitiesIdsToFetch = payload.data.reduce(
               (collectedIds, payload) => {
-                datocmsCreateNodeManifest({
-                  node: payload,
-                  entity_id,
-                  unstable_createNodeManifest,
-                  previewMode,
-                });
                 const item_type_rel = payload.relationships.item_type.data;
                 const itemTypeForThis = loader.entitiesRepo.findEntity(
                   item_type_rel.type,
@@ -280,36 +241,6 @@ module.exports = async (
   });
 
   await loader.load();
-
-  // only do this if previewMode
-  const payload = await client.items.all(
-    { version: `draft` },
-    { deserializeResponse: false, allPages: true },
-  );
-
-  console.log(`LENGTH`, payload.data.length);
-  payload.data.forEach(node => {
-    // if (
-    //   node.meta.updated_at &&
-    //   Date.now() - new Date(node.meta.updated_at).getTime() <=
-    //     // milliseconds
-    //     1000 *
-    //       // seconds
-    //       60 *
-    //       // minutes
-    //       60 *
-    //       // hours
-    //       48
-    // ) {
-    datocmsCreateNodeManifest({
-      node,
-      entity_id,
-      unstable_createNodeManifest,
-      previewMode,
-      getNode,
-    });
-    // }
-  });
 
   activity.end();
 

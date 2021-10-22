@@ -8,6 +8,8 @@ var fs = require('fs-extra');
 
 var createNodeFromEntity = require('./createNodeFromEntity');
 
+var buildItemTypeNode = require('./createNodeFromEntity/itemType');
+
 var destroyEntityNode = require('./destroyEntityNode');
 
 var _require = require('../onPreInit/errorMap'),
@@ -40,42 +42,16 @@ var findAll = function findAll(document, predicate) {
   return result;
 };
 
-var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
-  var node = _ref.node,
-      entity_id = _ref.entity_id,
-      unstable_createNodeManifest = _ref.unstable_createNodeManifest,
-      previewMode = _ref.previewMode;
-  var createNodeManifestIsSupported = typeof unstable_createNodeManifest === "function";
-  var shouldCreateNodeManifest = createNodeManifestIsSupported && previewMode;
-  console.log(JSON.stringify(node));
-
-  if (true) {
-    // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-    // Example node.id: "DatoCmsPost-1233566-en"
-    var manifestId = "".concat(node.id, "-").concat(node.meta.updated_at);
-    node.id = "DatoCMSPost-".concat(entity_id, "-en");
-    console.log(entity_id);
-    console.info("DatoCMS: Creating node manifest with id ".concat(manifestId)); // console.log(JSON.stringify(node));
-
-    unstable_createNodeManifest({
-      manifestId: manifestId,
-      node: node
-    });
-  } else if (previewMode && !createNodeManifestIsSupported) {
-    console.warn("DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.");
-  }
-};
-
 module.exports = /*#__PURE__*/function () {
-  var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref2, _ref3) {
-    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, localeFallbacks, unstable_createNodeManifest, errorText, client, loader, program, cacheDir, context, _entity_id, entity_type, event_type, changesActivity, _payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload2, activity, payload, queue;
+  var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref, _ref2) {
+    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, localeFallbacks, unstable_createNodeManifest, errorText, client, loader, program, cacheDir, context, entity_id, entity_type, event_type, changesActivity, payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload, activity, queue;
 
     return regeneratorRuntime.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            actions = _ref2.actions, getNode = _ref2.getNode, getNodesByType = _ref2.getNodesByType, reporter = _ref2.reporter, parentSpan = _ref2.parentSpan, schema = _ref2.schema, store = _ref2.store, webhookBody = _ref2.webhookBody;
-            apiToken = _ref3.apiToken, environment = _ref3.environment, disableLiveReload = _ref3.disableLiveReload, previewMode = _ref3.previewMode, instancePrefix = _ref3.instancePrefix, apiUrl = _ref3.apiUrl, rawLocaleFallbacks = _ref3.localeFallbacks;
+            actions = _ref.actions, getNode = _ref.getNode, getNodesByType = _ref.getNodesByType, reporter = _ref.reporter, parentSpan = _ref.parentSpan, schema = _ref.schema, store = _ref.store, webhookBody = _ref.webhookBody;
+            apiToken = _ref2.apiToken, environment = _ref2.environment, disableLiveReload = _ref2.disableLiveReload, previewMode = _ref2.previewMode, instancePrefix = _ref2.instancePrefix, apiUrl = _ref2.apiUrl, rawLocaleFallbacks = _ref2.localeFallbacks;
             localeFallbacks = rawLocaleFallbacks || {};
             unstable_createNodeManifest = actions.unstable_createNodeManifest;
 
@@ -121,6 +97,7 @@ module.exports = /*#__PURE__*/function () {
               schema: schema,
               store: store,
               cacheDir: cacheDir,
+              previewMode: previewMode,
               generateType: function generateType(type) {
                 return "DatoCms".concat(instancePrefix ? pascalize(instancePrefix) : '').concat(type);
               }
@@ -131,8 +108,8 @@ module.exports = /*#__PURE__*/function () {
               break;
             }
 
-            _entity_id = webhookBody.entity_id, entity_type = webhookBody.entity_type, event_type = webhookBody.event_type;
-            reporter.info("Received ".concat(event_type, " event for ").concat(entity_type, " ").concat(_entity_id, " from DatoCMS"));
+            entity_id = webhookBody.entity_id, entity_type = webhookBody.entity_type, event_type = webhookBody.event_type;
+            reporter.info("Received ".concat(event_type, " event for ").concat(entity_type, " ").concat(entity_id, " from DatoCMS"));
             changesActivity = reporter.activityTimer("loading DatoCMS content changes", {
               parentSpan: parentSpan
             });
@@ -149,7 +126,7 @@ module.exports = /*#__PURE__*/function () {
 
             _context.next = 23;
             return client.items.all({
-              'filter[ids]': [_entity_id].join(','),
+              'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
               deserializeResponse: false,
@@ -157,19 +134,19 @@ module.exports = /*#__PURE__*/function () {
             });
 
           case 23:
-            _payload = _context.sent;
+            payload = _context.sent;
 
-            if (!_payload) {
+            if (!payload) {
               _context.next = 31;
               break;
             }
 
             // `rich_text`, `links`, `link` fields link to other entities and we need to
             // fetch them separately to make sure we have all the data
-            linkedEntitiesIdsToFetch = _payload.data.reduce(function (collectedIds, payload) {
+            linkedEntitiesIdsToFetch = payload.data.reduce(function (collectedIds, payload) {
               datocmsCreateNodeManifest({
                 node: payload,
-                entity_id: _entity_id,
+                entity_id: entity_id,
                 unstable_createNodeManifest: unstable_createNodeManifest,
                 previewMode: previewMode
               });
@@ -219,8 +196,8 @@ module.exports = /*#__PURE__*/function () {
           case 28:
             linkedEntitiesPayload = _context.sent;
             // attach included portion of payload
-            _payload.included = linkedEntitiesPayload.data;
-            loader.entitiesRepo.upsertEntities(_payload);
+            payload.included = linkedEntitiesPayload.data;
+            loader.entitiesRepo.upsertEntities(payload);
 
           case 31:
             _context.next = 34;
@@ -228,7 +205,7 @@ module.exports = /*#__PURE__*/function () {
 
           case 33:
             if (event_type === 'unpublish' || event_type === 'delete') {
-              loader.entitiesRepo.destroyEntities('item', [_entity_id]);
+              loader.entitiesRepo.destroyEntities('item', [entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
@@ -244,7 +221,7 @@ module.exports = /*#__PURE__*/function () {
 
             _context.next = 38;
             return client.uploads.all({
-              'filter[ids]': [_entity_id].join(','),
+              'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
               deserializeResponse: false,
@@ -252,10 +229,10 @@ module.exports = /*#__PURE__*/function () {
             });
 
           case 38:
-            _payload2 = _context.sent;
+            _payload = _context.sent;
 
-            if (_payload2) {
-              loader.entitiesRepo.upsertEntities(_payload2);
+            if (_payload) {
+              loader.entitiesRepo.upsertEntities(_payload);
             }
 
             _context.next = 43;
@@ -263,7 +240,7 @@ module.exports = /*#__PURE__*/function () {
 
           case 42:
             if (event_type === 'delete') {
-              loader.entitiesRepo.destroyEntities('upload', [_entity_id]);
+              loader.entitiesRepo.destroyEntities('upload', [entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
@@ -294,38 +271,6 @@ module.exports = /*#__PURE__*/function () {
             return loader.load();
 
           case 54:
-            _context.next = 56;
-            return client.items.all({
-              version: "draft"
-            }, {
-              deserializeResponse: false,
-              allPages: true
-            });
-
-          case 56:
-            payload = _context.sent;
-            console.log("LENGTH", payload.data.length);
-            payload.data.forEach(function (node) {
-              // if (
-              //   node.meta.updated_at &&
-              //   Date.now() - new Date(node.meta.updated_at).getTime() <=
-              //     // milliseconds
-              //     1000 *
-              //       // seconds
-              //       60 *
-              //       // minutes
-              //       60 *
-              //       // hours
-              //       48
-              // ) {
-              datocmsCreateNodeManifest({
-                node: node,
-                entity_id: entity_id,
-                unstable_createNodeManifest: unstable_createNodeManifest,
-                previewMode: previewMode,
-                getNode: getNode
-              }); // }
-            });
             activity.end();
             queue = new Queue(1, Infinity); // if (process.env.NODE_ENV !== `production` && !disableLiveReload) {
             //   loader.watch(loadPromise => {
@@ -341,7 +286,7 @@ module.exports = /*#__PURE__*/function () {
             //   });
             // }
 
-          case 61:
+          case 56:
           case "end":
             return _context.stop();
         }
@@ -350,6 +295,6 @@ module.exports = /*#__PURE__*/function () {
   }));
 
   return function (_x, _x2) {
-    return _ref4.apply(this, arguments);
+    return _ref3.apply(this, arguments);
   };
 }();
