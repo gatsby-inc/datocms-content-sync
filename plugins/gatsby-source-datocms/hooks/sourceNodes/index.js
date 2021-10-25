@@ -144,12 +144,6 @@ module.exports = /*#__PURE__*/function () {
             // `rich_text`, `links`, `link` fields link to other entities and we need to
             // fetch them separately to make sure we have all the data
             linkedEntitiesIdsToFetch = payload.data.reduce(function (collectedIds, payload) {
-              datocmsCreateNodeManifest({
-                node: payload,
-                entity_id: entity_id,
-                unstable_createNodeManifest: unstable_createNodeManifest,
-                previewMode: previewMode
-              });
               var item_type_rel = payload.relationships.item_type.data;
               var itemTypeForThis = loader.entitiesRepo.findEntity(item_type_rel.type, item_type_rel.id);
               var fieldsToResolve = itemTypeForThis.fields.filter(function (fieldDef) {

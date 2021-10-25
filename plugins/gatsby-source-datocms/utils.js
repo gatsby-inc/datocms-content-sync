@@ -67,7 +67,45 @@ function getLoader(options) {
   return loader;
 }
 
+var FORTY_EIGHT_HOURS = 1000 * 60 * 60 * 48; // ms * sec * min * hr
+
+var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
+  var node = _ref.node,
+      context = _ref.context;
+
+  try {
+    var _node$entityPayload, _node$entityPayload$m;
+
+    var unstable_createNodeManifest = context.actions.unstable_createNodeManifest;
+    var createNodeManifestIsSupported = typeof unstable_createNodeManifest === "function";
+    var nodeNeedsManifestCreated = (node === null || node === void 0 ? void 0 : (_node$entityPayload = node.entityPayload) === null || _node$entityPayload === void 0 ? void 0 : (_node$entityPayload$m = _node$entityPayload.meta) === null || _node$entityPayload$m === void 0 ? void 0 : _node$entityPayload$m.updated_at) && (node === null || node === void 0 ? void 0 : node.locale);
+    var shouldCreateNodeManifest = createNodeManifestIsSupported && nodeNeedsManifestCreated;
+
+    if (shouldCreateNodeManifest) {
+      var _node$entityPayload2;
+
+      // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
+      var nodeWasRecentlyUpdated = Date.now() - new Date(node.entityPayload.meta.updated_at).getTime() <= ( // Default to only create manifests for items updated in last 48 hours
+      process.env.CONTENT_SYNC_DATOCMS_HOURS_SINCE_ENTRY_UPDATE || FORTY_EIGHT_HOURS); // We need to create manifests on cold builds, this prevents from creating many more
+      // manifests than we actually need
+
+      if (!nodeWasRecentlyUpdated) return;
+      var manifestId = "".concat(node === null || node === void 0 ? void 0 : (_node$entityPayload2 = node.entityPayload) === null || _node$entityPayload2 === void 0 ? void 0 : _node$entityPayload2.id, "-").concat(node.entityPayload.meta.updated_at);
+      console.info("DatoCMS: Creating node manifest with id ".concat(manifestId));
+      unstable_createNodeManifest({
+        manifestId: manifestId,
+        node: node
+      });
+    } else if (!createNodeManifestIsSupported) {
+      console.warn("DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.");
+    }
+  } catch (e) {
+    console.info("Cannot create node manifest", e.message);
+  }
+};
+
 module.exports = {
   getClient: getClient,
-  getLoader: getLoader
+  getLoader: getLoader,
+  datocmsCreateNodeManifest: datocmsCreateNodeManifest
 };
