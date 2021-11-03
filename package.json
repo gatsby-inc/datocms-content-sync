@@ -20,7 +20,7 @@
     "classnames": "^2.2.6",
     "datocms-client": "^3.4.22",
     "dotenv": "^8.2.0",
-    "gatsby": "^3.14.4",
+    "gatsby": "^3.0.0",
     "gatsby-image": "^2.11.0",
     "gatsby-plugin-postcss": "^3.7.0",
     "gatsby-plugin-react-helmet": "^3.10.0",
