@@ -5,87 +5,85 @@ const CLIENT_HEADERS = {
   'X-SSG': 'gatsby',
 };
 
-const GATSBY_CLOUD = process.env.GATSBY_CLOUD;
-const GATSBY_EXECUTING_COMMAND = process.env.gatsby_executing_command;
-
-const clients = {};
 const loaders = {};
 
-function getClient(options) {
-  const { apiToken, apiUrl, environment } = options;
-  const key = JSON.stringify({ apiToken, apiUrl, environment });
+async function getLoader({ cache, loadStateFromCache, ...options }) {
+  const {
+    apiToken,
+    apiUrl,
+    environment,
+    logApiCalls,
+    pageSize,
+    previewMode,
+  } = options;
 
-  if (clients[key]) {
-    return clients[key];
+  const clientOptions = {
+    headers: CLIENT_HEADERS,
+  };
+
+  if (options.environment) {
+    clientOptions.environment = environment;
   }
 
-  const client = apiUrl
-    ? new SiteClient(apiToken, { ...CLIENT_HEADERS, environment }, apiUrl)
-    : new SiteClient(apiToken, { ...CLIENT_HEADERS, environment });
+  if (options.baseUrl) {
+    clientOptions.baseUrl = apiUrl;
+  }
 
-  clients[key] = client;
+  if (options.logApiCalls) {
+    clientOptions.logApiCalls = logApiCalls;
+  }
 
-  return client;
-}
+  const loaderArgs = [
+    [apiToken, clientOptions],
+    previewMode,
+    environment,
+    { pageSize },
+  ];
 
-function getLoader(options) {
-  const { apiToken, apiUrl, previewMode, environment } = options;
-  const key = JSON.stringify({ apiToken, apiUrl, previewMode, environment });
+  const key = JSON.stringify(loaderArgs);
 
   if (loaders[key]) {
     return loaders[key];
   }
 
-  const loader = new Loader(
-    getClient({ apiToken, apiUrl, environment }),
-    (GATSBY_CLOUD && GATSBY_EXECUTING_COMMAND === 'develop') || previewMode,
-    environment,
-  );
+  const loader = new Loader(...loaderArgs);
+
+  if (loadStateFromCache) {
+    await loader.loadStateFromCache(cache);
+  }
 
   loaders[key] = loader;
 
   return loader;
 }
 
-const FORTY_EIGHT_HOURS = 1000 * 60 * 60 * 48; // ms * sec * min * hr
+const ONE_DAY = 1000 * 60 * 60 * 24; // ms * sec * min * hour
+let nodeManifestWarningWasLogged;
 
 const datocmsCreateNodeManifest = ({ node, context }) => {
   try {
     const { unstable_createNodeManifest } = context.actions;
-    const createNodeManifestIsSupported =
-      typeof unstable_createNodeManifest === `function`;
+    const createNodeManifestIsSupported = typeof unstable_createNodeManifest === `function`;
+    const updatedAtUTC = node?.entityPayload?.meta?.updated_at;
+    const nodeNeedsManifestCreated = updatedAt && node?.locale;
 
-    const nodeNeedsManifestCreated =
-      node?.entityPayload?.meta?.updated_at && node?.locale;
-
-    const shouldCreateNodeManifest =
-      createNodeManifestIsSupported && nodeNeedsManifestCreated;
+    const shouldCreateNodeManifest = createNodeManifestIsSupported && nodeNeedsManifestCreated;
 
     if (shouldCreateNodeManifest) {
+        
       // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-
-      const nodeWasRecentlyUpdated =
-        Date.now() - new Date(node.entityPayload.meta.updated_at).getTime() <=
-        // Default to only create manifests for items updated in last 48 hours
-        (process.env.CONTENT_SYNC_DATOCMS_HOURS_SINCE_ENTRY_UPDATE ||
-          FORTY_EIGHT_HOURS);
-
-      // We need to create manifests on cold builds, this prevents from creating many more
-      // manifests than we actually need
-      if (!nodeWasRecentlyUpdated) return;
-
-      const manifestId = `${node?.entityPayload?.id}-${node.entityPayload.meta.updated_at}`;
-
-      console.info(`DatoCMS: Creating node manifest with id ${manifestId}`);
+      const manifestId = `${node.entityPayload.id}-${updatedAtUTC}`;
 
       unstable_createNodeManifest({
         manifestId,
         node,
+        updatedAtUTC
       });
-    } else if (!createNodeManifestIsSupported) {
+    } else if (!createNodeManifestIsSupported && !nodeManifestWarningWasLogged) {
       console.warn(
         `DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.`,
       );
+      nodeManifestWarningWasLogged = true;
     }
   } catch (e) {
     console.info(`Cannot create node manifest`, e.message);
@@ -93,7 +91,6 @@ const datocmsCreateNodeManifest = ({ node, context }) => {
 };
 
 module.exports = {
-  getClient,
   getLoader,
   datocmsCreateNodeManifest,
 };

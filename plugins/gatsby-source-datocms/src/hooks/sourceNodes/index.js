@@ -1,8 +1,6 @@
-const fs = require('fs-extra');
 const createNodeFromEntity = require('./createNodeFromEntity');
-const buildItemTypeNode = require('./createNodeFromEntity/itemType');
 const destroyEntityNode = require('./destroyEntityNode');
-const { prefixId, CODES } = require('../onPreInit/errorMap');
+const { prefixId, CODES } = require('../../errorMap');
 const Queue = require('promise-queue');
 const { pascalize } = require('humps');
 const uniq = require('lodash.uniq');
@@ -13,7 +11,7 @@ const {
   isBlock,
 } = require('datocms-structured-text-utils');
 
-const { getClient, getLoader } = require('../../utils');
+const { getLoader } = require('../../utils');
 
 const findAll = (document, predicate) => {
   const result = [];
@@ -35,6 +33,7 @@ module.exports = async (
     schema,
     store,
     webhookBody,
+    cache,
   },
   {
     apiToken,
@@ -44,10 +43,11 @@ module.exports = async (
     instancePrefix,
     apiUrl,
     localeFallbacks: rawLocaleFallbacks,
+    pageSize,
+    logApiCalls,
   },
 ) => {
   const localeFallbacks = rawLocaleFallbacks || {};
-  const { unstable_createNodeManifest } = actions;
 
   if (!apiToken) {
     const errorText = `API token must be provided!`;
@@ -60,19 +60,16 @@ module.exports = async (
     );
   }
 
-  if (process.env.GATSBY_IS_PREVIEW === `true`) {
-    previewMode = true;
-  }
-
-  const client = getClient({ apiToken, previewMode, environment, apiUrl });
-  const loader = getLoader({ apiToken, previewMode, environment, apiUrl });
-
-  const program = store.getState().program;
-  const cacheDir = `${program.directory}/.cache/datocms-assets`;
-
-  if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir);
-  }
+  const loader = await getLoader({
+    cache,
+    apiToken,
+    previewMode,
+    environment,
+    apiUrl,
+    pageSize,
+    logApiCalls,
+    loadStateFromCache: !!process.env.GATSBY_WORKER_ID,
+  });
 
   const context = {
     entitiesRepo: loader.entitiesRepo,
@@ -82,7 +79,7 @@ module.exports = async (
     localeFallbacks,
     schema,
     store,
-    cacheDir,
+    cache,
     previewMode,
     generateType: type =>
       `DatoCms${instancePrefix ? pascalize(instancePrefix) : ''}${type}`,
@@ -108,7 +105,7 @@ module.exports = async (
           event_type === `update` ||
           event_type === 'create'
         ) {
-          const payload = await client.items.all(
+          const payload = await loader.client.items.all(
             {
               'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published',
@@ -178,7 +175,7 @@ module.exports = async (
               new Set(),
             );
 
-            const linkedEntitiesPayload = await client.items.all(
+            const linkedEntitiesPayload = await loader.client.items.all(
               {
                 'filter[ids]': Array.from(linkedEntitiesIdsToFetch).join(','),
                 version: previewMode ? 'draft' : 'published',
@@ -203,7 +200,7 @@ module.exports = async (
 
       case 'upload':
         if (event_type === 'create' || event_type === `update`) {
-          const payload = await client.uploads.all(
+          const payload = await loader.client.uploads.all(
             {
               'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published',
@@ -240,25 +237,28 @@ module.exports = async (
     destroyEntityNode(entity, context);
   });
 
-  await loader.load();
+  if (!process.env.GATSBY_WORKER_ID) {
+    await loader.load();
+    await loader.saveStateToCache(cache);
+  }
 
   activity.end();
 
   const queue = new Queue(1, Infinity);
 
-  // if (process.env.NODE_ENV !== `production` && !disableLiveReload) {
-  //   loader.watch(loadPromise => {
-  //     queue.add(async () => {
-  //       const activity = reporter.activityTimer(
-  //         `detected change in DatoCMS content, loading new data`,
-  //         { parentSpan },
-  //       );
-  //       activity.start();
+  if (process.env.NODE_ENV !== `production` && !disableLiveReload) {
+    loader.watch(loadPromise => {
+      queue.add(async () => {
+        const activity = reporter.activityTimer(
+          `detected change in DatoCMS content, loading new data`,
+          { parentSpan },
+        );
+        activity.start();
 
-  //       await loadPromise;
+        await loadPromise;
 
-  //       activity.end();
-  //     });
-  //   });
-  // }
+        activity.end();
+      });
+    });
+  }
 };
