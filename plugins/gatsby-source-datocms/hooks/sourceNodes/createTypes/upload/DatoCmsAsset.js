@@ -12,7 +12,7 @@ module.exports = function (_ref) {
   var actions = _ref.actions,
       schema = _ref.schema,
       store = _ref.store,
-      cacheDir = _ref.cacheDir,
+      cache = _ref.cache,
       generateType = _ref.generateType;
   actions.createTypes([schema.buildObjectType({
     name: generateType('Asset'),
@@ -20,7 +20,7 @@ module.exports = function (_ref) {
       infer: false
     },
     fields: _objectSpread({}, buildAssetFields({
-      cacheDir: cacheDir
+      cache: cache
     })),
     interfaces: ['Node']
   }), schema.buildEnumType({

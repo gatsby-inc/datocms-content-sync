@@ -4,8 +4,7 @@ module.exports = function () {
   return {
     type: 'Date',
     extensions: {
-      dateformat: {},
-      proxy: {}
+      dateformat: {}
     },
     resolveForSimpleField: function resolveForSimpleField(value) {
       return value;

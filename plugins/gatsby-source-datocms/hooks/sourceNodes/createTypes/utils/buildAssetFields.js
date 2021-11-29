@@ -29,7 +29,7 @@ var resolveUsingEntityPayloadAttribute = function resolveUsingEntityPayloadAttri
 };
 
 module.exports = function (_ref) {
-  var cacheDir = _ref.cacheDir;
+  var cache = _ref.cache;
   return _objectSpread({
     size: resolveUsingEntityPayloadAttribute('size', {
       type: 'Int'
@@ -104,8 +104,7 @@ module.exports = function (_ref) {
     createdAt: resolveUsingEntityPayloadAttribute('created_at', {
       type: 'Date',
       extensions: {
-        dateformat: {},
-        proxy: {}
+        dateformat: {}
       }
     }),
     video: {
@@ -119,6 +118,6 @@ module.exports = function (_ref) {
       }
     }
   }, buildFluidFields(), {}, buildFixedFields(), {}, buildGatsbyImageDataFields({
-    cacheDir: cacheDir
+    cache: cache
   }));
 };

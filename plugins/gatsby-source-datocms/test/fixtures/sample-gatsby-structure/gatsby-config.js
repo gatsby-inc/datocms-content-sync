@@ -4,8 +4,9 @@ module.exports = {
       resolve: `wrapper`,
       options: {
         apiToken: process.env.DATOCMS_API_TOKEN,
+        pageSize: 30,
         localeFallbacks: {
-          'it': ['en'],
+          it: ['en'],
         },
       },
     },
@@ -17,8 +18,7 @@ module.exports = {
         instancePrefix: 'alternative',
       },
     },
-    {
-      resolve: `gatsby-transformer-remark`,
-    },
+    `gatsby-transformer-remark`,
+    `gatsby-plugin-image`,
   ],
-}
+};

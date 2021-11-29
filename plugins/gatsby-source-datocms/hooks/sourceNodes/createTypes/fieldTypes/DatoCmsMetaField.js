@@ -3,8 +3,7 @@
 var dateType = {
   type: 'Date',
   extensions: {
-    dateformat: {},
-    proxy: {}
+    dateformat: {}
   }
 };
 

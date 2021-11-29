@@ -57,14 +57,13 @@ async function getLoader({ cache, loadStateFromCache, ...options }) {
   return loader;
 }
 
-const ONE_DAY = 1000 * 60 * 60 * 24; // ms * sec * min * hour
 let nodeManifestWarningWasLogged;
 
 const datocmsCreateNodeManifest = ({ node, context }) => {
   try {
     const { unstable_createNodeManifest } = context.actions;
     const createNodeManifestIsSupported = typeof unstable_createNodeManifest === `function`;
-    const updatedAtUTC = node?.entityPayload?.meta?.updated_at;
+    const updatedAt = node?.entityPayload?.meta?.updated_at;
     const nodeNeedsManifestCreated = updatedAt && node?.locale;
 
     const shouldCreateNodeManifest = createNodeManifestIsSupported && nodeNeedsManifestCreated;
@@ -72,12 +71,12 @@ const datocmsCreateNodeManifest = ({ node, context }) => {
     if (shouldCreateNodeManifest) {
         
       // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-      const manifestId = `${node.entityPayload.id}-${updatedAtUTC}`;
-
+      const manifestId = `${node.entityPayload.id}-${updatedAt}`;
+     
       unstable_createNodeManifest({
         manifestId,
         node,
-        updatedAtUTC
+        updatedAt
       });
     } else if (!createNodeManifestIsSupported && !nodeManifestWarningWasLogged) {
       console.warn(

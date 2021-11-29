@@ -1,5 +1,9 @@
 "use strict";
 
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
+
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
@@ -22,34 +26,33 @@ var simpleFieldReturnCamelizedKeys = require('./fields/simpleFieldReturnCamelize
 
 var itemNodeId = require('../utils/itemNodeId');
 
-var fieldResolvers = {
-  "boolean": simpleField('Boolean'),
-  color: simpleField('DatoCmsColorField'),
-  date: require('./fields/date'),
-  date_time: require('./fields/date'),
-  file: require('./fields/file'),
-  "float": simpleField('Float'),
-  gallery: require('./fields/gallery'),
-  integer: simpleField('Int'),
-  json: simpleField('JSON'),
-  lat_lon: simpleField('DatoCmsLatLonField'),
-  link: require('./fields/link'),
-  links: require('./fields/richText'),
-  rich_text: require('./fields/richText'),
-  structured_text: require('./fields/structuredText'),
-  seo: simpleFieldReturnCamelizedKeys('DatoCmsSeoField'),
-  slug: simpleField('String'),
-  string: simpleField('String'),
-  text: require('./fields/text'),
-  video: simpleFieldReturnCamelizedKeys('DatoCmsVideoField')
-};
-
 module.exports = function (_ref) {
   var entitiesRepo = _ref.entitiesRepo,
       localeFallbacks = _ref.localeFallbacks,
       actions = _ref.actions,
       schema = _ref.schema,
       generateType = _ref.generateType;
+  var fieldResolvers = {
+    "boolean": simpleField('Boolean'),
+    color: simpleField('DatoCmsColorField'),
+    date: require('./fields/date'),
+    date_time: require('./fields/date'),
+    file: require('./fields/file'),
+    "float": simpleField('Float'),
+    gallery: require('./fields/gallery'),
+    integer: simpleField('Int'),
+    json: simpleField('JSON'),
+    lat_lon: simpleField('DatoCmsLatLonField'),
+    link: require('./fields/link'),
+    links: require('./fields/richText'),
+    rich_text: require('./fields/richText'),
+    structured_text: require('./fields/structuredText'),
+    seo: simpleFieldReturnCamelizedKeys(generateType('SeoField')),
+    slug: simpleField('String'),
+    string: simpleField('String'),
+    text: require('./fields/text'),
+    video: simpleFieldReturnCamelizedKeys('DatoCmsVideoField')
+  };
 
   var gqlItemTypeName = function gqlItemTypeName(itemType) {
     return generateType(pascalize(itemType.apiKey));
@@ -89,7 +92,7 @@ module.exports = function (_ref) {
               fallbacks: localeFallbacks
             };
             var value = localizedRead(node.entityPayload.attributes, field.apiKey, field.localized, i18n);
-            return resolveForSimpleField(value, context, node, i18n);
+            return resolveForSimpleField(value, context, node, i18n, generateType);
           }
         })));
 
@@ -102,7 +105,7 @@ module.exports = function (_ref) {
                 fallbacks: localeFallbacks
               };
               var value = localizedRead(node.entityPayload.attributes, field.apiKey, field.localized, i18n);
-              return resolveForNodeField(value, context, node, i18n);
+              return resolveForNodeField(value, context, node, i18n, generateType);
             }
           }));
         }
@@ -125,7 +128,7 @@ module.exports = function (_ref) {
                     fallbacks: localeFallbacks
                   };
                   var value = localizedRead(node.entityPayload.attributes, field.apiKey, field.localized, i18n);
-                  return resolveForSimpleField(value, context, node, i18n);
+                  return resolveForSimpleField(value, context, node, i18n, generateType);
                 }
               }
             }, nodeType ? {
@@ -137,7 +140,7 @@ module.exports = function (_ref) {
                     fallbacks: localeFallbacks
                   };
                   var value = localizedRead(node.entityPayload.attributes, field.apiKey, field.localized, i18n);
-                  return resolveForNodeField(value, context, node, i18n);
+                  return resolveForNodeField(value, context, node, i18n, generateType);
                 }
               }
             } : {})
@@ -187,15 +190,42 @@ module.exports = function (_ref) {
         },
         treeChildren: {
           type: "[".concat(type, "]"),
-          resolve: function resolve(node, args, context) {
-            var allItems = context.nodeModel.getAllNodes({
-              type: type
-            });
-            var children = allItems.filter(function (otherNode) {
-              return otherNode.entityPayload.attributes.parent_id === node.entityPayload.id && otherNode.locale === node.locale;
-            });
-            return children;
-          }
+          resolve: function () {
+            var _resolve = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(node, args, context) {
+              var _yield$context$nodeMo, allItems, children;
+
+              return regeneratorRuntime.wrap(function _callee$(_context) {
+                while (1) {
+                  switch (_context.prev = _context.next) {
+                    case 0:
+                      _context.next = 2;
+                      return context.nodeModel.findAll({
+                        type: type,
+                        query: {}
+                      });
+
+                    case 2:
+                      _yield$context$nodeMo = _context.sent;
+                      allItems = _yield$context$nodeMo.entries;
+                      children = allItems.filter(function (otherNode) {
+                        return otherNode.entityPayload.attributes.parent_id === node.entityPayload.id && otherNode.locale === node.locale;
+                      });
+                      return _context.abrupt("return", children);
+
+                    case 6:
+                    case "end":
+                      return _context.stop();
+                  }
+                }
+              }, _callee);
+            }));
+
+            function resolve(_x, _x2, _x3) {
+              return _resolve.apply(this, arguments);
+            }
+
+            return resolve;
+          }()
         },
         root: {
           type: 'Boolean',

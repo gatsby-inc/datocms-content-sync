@@ -22,13 +22,13 @@ function localizedDefaultFieldMetadata(metadata, attribute, i18n) {
 module.exports = function () {
   return {
     type: 'DatoCmsFileField',
-    resolveForSimpleField: function resolveForSimpleField(fieldValue, context, node, i18n) {
+    resolveForSimpleField: function resolveForSimpleField(fieldValue, context, node, i18n, generateType) {
       if (!fieldValue) {
         return null;
       }
 
       var upload = context.nodeModel.getNodeById({
-        id: "DatoCmsAsset-".concat(fieldValue.upload_id)
+        id: "".concat(generateType('Asset'), "-").concat(fieldValue.upload_id)
       });
       var defaultAlt = localizedDefaultFieldMetadata(upload.entityPayload.attributes.default_field_metadata, 'alt', i18n);
       var defaultTitle = localizedDefaultFieldMetadata(upload.entityPayload.attributes.default_field_metadata, 'title', i18n);

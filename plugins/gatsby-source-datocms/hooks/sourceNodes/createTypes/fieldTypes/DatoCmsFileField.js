@@ -11,14 +11,14 @@ var buildAssetFields = require('../utils/buildAssetFields');
 module.exports = function (_ref) {
   var actions = _ref.actions,
       schema = _ref.schema,
-      cacheDir = _ref.cacheDir;
+      cache = _ref.cache;
   actions.createTypes([schema.buildObjectType({
     name: 'DatoCmsFileField',
     extensions: {
       infer: false
     },
     fields: _objectSpread({}, buildAssetFields({
-      cacheDir: cacheDir
+      cache: cache
     }), {
       alt: 'String',
       title: 'String',

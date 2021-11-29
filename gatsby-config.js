@@ -11,7 +11,7 @@ module.exports = {
       options: {
         apiToken: process.env.DATO_API_TOKEN,
         environment: process.env.DATO_ENVIRONMENT || "main",
-        previewMode: process.env.GATSBY_IS_PREVIEW
+        previewMode: process.env.GATSBY_IS_PREVIEW || true,
       },
     },
     "gatsby-plugin-sharp",

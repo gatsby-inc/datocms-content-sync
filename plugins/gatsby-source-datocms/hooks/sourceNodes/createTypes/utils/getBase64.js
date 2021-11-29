@@ -16,57 +16,56 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
-var Queue = require('promise-queue');
-
-var fs = require('fs-extra');
+var fs = require('fs/promises');
 
 var path = require('path');
-
-var md5 = require('md5');
-
-var got = require('got');
 
 var resizeUrl = require('./resizeUrl');
 
 var queryString = require('query-string');
 
-var queue = new Queue(10, Infinity);
-var promises = {};
+var _require = require('gatsby-core-utils'),
+    fetchRemoteFile = _require.fetchRemoteFile;
 
-function download(requestUrl, cacheDir) {
-  var cacheFile = path.join(cacheDir, md5(requestUrl));
+function download(_x, _x2) {
+  return _download.apply(this, arguments);
+}
 
-  if (fs.existsSync(cacheFile)) {
-    var body = fs.readFileSync(cacheFile, 'utf8');
-    return Promise.resolve(body);
-  }
+function _download() {
+  _download = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(url, cache) {
+    var absolutePath, base64, extension;
+    return regeneratorRuntime.wrap(function _callee2$(_context2) {
+      while (1) {
+        switch (_context2.prev = _context2.next) {
+          case 0:
+            _context2.next = 2;
+            return fetchRemoteFile({
+              url: url,
+              cache: cache
+            });
 
-  var key = JSON.stringify({
-    requestUrl: requestUrl,
-    cacheFile: cacheFile
-  });
+          case 2:
+            absolutePath = _context2.sent;
+            _context2.next = 5;
+            return fs.readFile(absolutePath);
 
-  if (promises[key]) {
-    return promises[key];
-  }
+          case 5:
+            base64 = _context2.sent.toString("base64");
+            extension = path.extname(absolutePath).split('.').pop();
+            return _context2.abrupt("return", "data:image/".concat(extension, ";base64,").concat(base64));
 
-  promises[key] = queue.add(function () {
-    return got(encodeURI(requestUrl), {
-      encoding: 'base64',
-      retry: {
-        limit: 5
+          case 8:
+          case "end":
+            return _context2.stop();
+        }
       }
-    }).then(function (res) {
-      var data = 'data:' + res.headers['content-type'] + ';base64,' + res.body;
-      fs.writeFileSync(cacheFile, data, 'utf8');
-      return data;
-    });
-  });
-  return promises[key];
+    }, _callee2);
+  }));
+  return _download.apply(this, arguments);
 }
 
 module.exports = /*#__PURE__*/function () {
-  var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref, cacheDir) {
+  var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref, cache) {
     var forceBlurhash, format, src, width, height, _src$split, _src$split2, baseUrl, query, _url, result, imgixParams, url, _result;
 
     return regeneratorRuntime.wrap(function _callee$(_context) {
@@ -88,7 +87,7 @@ module.exports = /*#__PURE__*/function () {
             }, 20);
             _context.prev = 4;
             _context.next = 7;
-            return download(_url, cacheDir);
+            return download(_url, cache);
 
           case 7:
             result = _context.sent;
@@ -106,7 +105,7 @@ module.exports = /*#__PURE__*/function () {
             url = "".concat(baseUrl, "?").concat(queryString.stringify(imgixParams));
             _context.prev = 18;
             _context.next = 21;
-            return download(url, cacheDir);
+            return download(url, cache);
 
           case 21:
             _result = _context.sent;
@@ -126,7 +125,7 @@ module.exports = /*#__PURE__*/function () {
     }, _callee, null, [[4, 11], [18, 25]]);
   }));
 
-  return function (_x, _x2) {
+  return function (_x3, _x4) {
     return _ref2.apply(this, arguments);
   };
 }();

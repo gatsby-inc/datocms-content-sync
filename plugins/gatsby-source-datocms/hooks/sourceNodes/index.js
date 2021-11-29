@@ -4,15 +4,11 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
-var fs = require('fs-extra');
-
 var createNodeFromEntity = require('./createNodeFromEntity');
-
-var buildItemTypeNode = require('./createNodeFromEntity/itemType');
 
 var destroyEntityNode = require('./destroyEntityNode');
 
-var _require = require('../onPreInit/errorMap'),
+var _require = require('../../errorMap'),
     prefixId = _require.prefixId,
     CODES = _require.CODES;
 
@@ -31,7 +27,6 @@ var _require3 = require('datocms-structured-text-utils'),
     isBlock = _require3.isBlock;
 
 var _require4 = require('../../utils'),
-    getClient = _require4.getClient,
     getLoader = _require4.getLoader;
 
 var findAll = function findAll(document, predicate) {
@@ -43,17 +38,16 @@ var findAll = function findAll(document, predicate) {
 };
 
 module.exports = /*#__PURE__*/function () {
-  var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref, _ref2) {
-    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, localeFallbacks, unstable_createNodeManifest, errorText, client, loader, program, cacheDir, context, entity_id, entity_type, event_type, changesActivity, payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload, activity, queue;
+  var _ref3 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(_ref, _ref2) {
+    var actions, getNode, getNodesByType, reporter, parentSpan, schema, store, webhookBody, cache, apiToken, environment, disableLiveReload, previewMode, instancePrefix, apiUrl, rawLocaleFallbacks, pageSize, logApiCalls, localeFallbacks, errorText, loader, context, entity_id, entity_type, event_type, changesActivity, payload, linkedEntitiesIdsToFetch, linkedEntitiesPayload, _payload, activity, queue;
 
-    return regeneratorRuntime.wrap(function _callee$(_context) {
+    return regeneratorRuntime.wrap(function _callee2$(_context2) {
       while (1) {
-        switch (_context.prev = _context.next) {
+        switch (_context2.prev = _context2.next) {
           case 0:
-            actions = _ref.actions, getNode = _ref.getNode, getNodesByType = _ref.getNodesByType, reporter = _ref.reporter, parentSpan = _ref.parentSpan, schema = _ref.schema, store = _ref.store, webhookBody = _ref.webhookBody;
-            apiToken = _ref2.apiToken, environment = _ref2.environment, disableLiveReload = _ref2.disableLiveReload, previewMode = _ref2.previewMode, instancePrefix = _ref2.instancePrefix, apiUrl = _ref2.apiUrl, rawLocaleFallbacks = _ref2.localeFallbacks;
+            actions = _ref.actions, getNode = _ref.getNode, getNodesByType = _ref.getNodesByType, reporter = _ref.reporter, parentSpan = _ref.parentSpan, schema = _ref.schema, store = _ref.store, webhookBody = _ref.webhookBody, cache = _ref.cache;
+            apiToken = _ref2.apiToken, environment = _ref2.environment, disableLiveReload = _ref2.disableLiveReload, previewMode = _ref2.previewMode, instancePrefix = _ref2.instancePrefix, apiUrl = _ref2.apiUrl, rawLocaleFallbacks = _ref2.localeFallbacks, pageSize = _ref2.pageSize, logApiCalls = _ref2.logApiCalls;
             localeFallbacks = rawLocaleFallbacks || {};
-            unstable_createNodeManifest = actions.unstable_createNodeManifest;
 
             if (!apiToken) {
               errorText = "API token must be provided!";
@@ -65,29 +59,20 @@ module.exports = /*#__PURE__*/function () {
               }, new Error(errorText));
             }
 
-            if (process.env.GATSBY_IS_PREVIEW === "true") {
-              previewMode = true;
-            }
-
-            client = getClient({
+            _context2.next = 6;
+            return getLoader({
+              cache: cache,
               apiToken: apiToken,
               previewMode: previewMode,
               environment: environment,
-              apiUrl: apiUrl
+              apiUrl: apiUrl,
+              pageSize: pageSize,
+              logApiCalls: logApiCalls,
+              loadStateFromCache: !!process.env.GATSBY_WORKER_ID
             });
-            loader = getLoader({
-              apiToken: apiToken,
-              previewMode: previewMode,
-              environment: environment,
-              apiUrl: apiUrl
-            });
-            program = store.getState().program;
-            cacheDir = "".concat(program.directory, "/.cache/datocms-assets");
 
-            if (!fs.existsSync(cacheDir)) {
-              fs.mkdirSync(cacheDir);
-            }
-
+          case 6:
+            loader = _context2.sent;
             context = {
               entitiesRepo: loader.entitiesRepo,
               actions: actions,
@@ -96,7 +81,7 @@ module.exports = /*#__PURE__*/function () {
               localeFallbacks: localeFallbacks,
               schema: schema,
               store: store,
-              cacheDir: cacheDir,
+              cache: cache,
               previewMode: previewMode,
               generateType: function generateType(type) {
                 return "DatoCms".concat(instancePrefix ? pascalize(instancePrefix) : '').concat(type);
@@ -104,7 +89,7 @@ module.exports = /*#__PURE__*/function () {
             };
 
             if (!(webhookBody && Object.keys(webhookBody).length)) {
-              _context.next = 48;
+              _context2.next = 44;
               break;
             }
 
@@ -114,18 +99,18 @@ module.exports = /*#__PURE__*/function () {
               parentSpan: parentSpan
             });
             changesActivity.start();
-            _context.t0 = entity_type;
-            _context.next = _context.t0 === 'item' ? 20 : _context.t0 === 'upload' ? 35 : 44;
+            _context2.t0 = entity_type;
+            _context2.next = _context2.t0 === 'item' ? 16 : _context2.t0 === 'upload' ? 31 : 40;
             break;
 
-          case 20:
+          case 16:
             if (!(event_type === 'publish' || event_type === "update" || event_type === 'create')) {
-              _context.next = 33;
+              _context2.next = 29;
               break;
             }
 
-            _context.next = 23;
-            return client.items.all({
+            _context2.next = 19;
+            return loader.client.items.all({
               'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
@@ -133,11 +118,11 @@ module.exports = /*#__PURE__*/function () {
               allPages: true
             });
 
-          case 23:
-            payload = _context.sent;
+          case 19:
+            payload = _context2.sent;
 
             if (!payload) {
-              _context.next = 31;
+              _context2.next = 27;
               break;
             }
 
@@ -178,8 +163,8 @@ module.exports = /*#__PURE__*/function () {
               });
               return collectedIds;
             }, new Set());
-            _context.next = 28;
-            return client.items.all({
+            _context2.next = 24;
+            return loader.client.items.all({
               'filter[ids]': Array.from(linkedEntitiesIdsToFetch).join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
@@ -187,34 +172,34 @@ module.exports = /*#__PURE__*/function () {
               allPages: true
             });
 
-          case 28:
-            linkedEntitiesPayload = _context.sent;
+          case 24:
+            linkedEntitiesPayload = _context2.sent;
             // attach included portion of payload
             payload.included = linkedEntitiesPayload.data;
             loader.entitiesRepo.upsertEntities(payload);
 
-          case 31:
-            _context.next = 34;
+          case 27:
+            _context2.next = 30;
             break;
 
-          case 33:
+          case 29:
             if (event_type === 'unpublish' || event_type === 'delete') {
               loader.entitiesRepo.destroyEntities('item', [entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
 
-          case 34:
-            return _context.abrupt("break", 46);
+          case 30:
+            return _context2.abrupt("break", 42);
 
-          case 35:
+          case 31:
             if (!(event_type === 'create' || event_type === "update")) {
-              _context.next = 42;
+              _context2.next = 38;
               break;
             }
 
-            _context.next = 38;
-            return client.uploads.all({
+            _context2.next = 34;
+            return loader.client.uploads.all({
               'filter[ids]': [entity_id].join(','),
               version: previewMode ? 'draft' : 'published'
             }, {
@@ -222,35 +207,35 @@ module.exports = /*#__PURE__*/function () {
               allPages: true
             });
 
-          case 38:
-            _payload = _context.sent;
+          case 34:
+            _payload = _context2.sent;
 
             if (_payload) {
               loader.entitiesRepo.upsertEntities(_payload);
             }
 
-            _context.next = 43;
+            _context2.next = 39;
             break;
 
-          case 42:
+          case 38:
             if (event_type === 'delete') {
               loader.entitiesRepo.destroyEntities('upload', [entity_id]);
             } else {
               reporter.warn("Invalid event type ".concat(event_type));
             }
 
-          case 43:
-            return _context.abrupt("break", 46);
+          case 39:
+            return _context2.abrupt("break", 42);
+
+          case 40:
+            reporter.warn("Invalid entity type ".concat(entity_type));
+            return _context2.abrupt("break", 42);
+
+          case 42:
+            changesActivity.end();
+            return _context2.abrupt("return");
 
           case 44:
-            reporter.warn("Invalid entity type ".concat(entity_type));
-            return _context.abrupt("break", 46);
-
-          case 46:
-            changesActivity.end();
-            return _context.abrupt("return");
-
-          case 48:
             activity = reporter.activityTimer("loading DatoCMS content", {
               parentSpan: parentSpan
             });
@@ -261,31 +246,57 @@ module.exports = /*#__PURE__*/function () {
             loader.entitiesRepo.addDestroyListener(function (entity) {
               destroyEntityNode(entity, context);
             });
-            _context.next = 54;
+
+            if (process.env.GATSBY_WORKER_ID) {
+              _context2.next = 53;
+              break;
+            }
+
+            _context2.next = 51;
             return loader.load();
 
-          case 54:
+          case 51:
+            _context2.next = 53;
+            return loader.saveStateToCache(cache);
+
+          case 53:
             activity.end();
-            queue = new Queue(1, Infinity); // if (process.env.NODE_ENV !== `production` && !disableLiveReload) {
-            //   loader.watch(loadPromise => {
-            //     queue.add(async () => {
-            //       const activity = reporter.activityTimer(
-            //         `detected change in DatoCMS content, loading new data`,
-            //         { parentSpan },
-            //       );
-            //       activity.start();
-            //       await loadPromise;
-            //       activity.end();
-            //     });
-            //   });
-            // }
+            queue = new Queue(1, Infinity);
+
+            if (process.env.NODE_ENV !== "production" && !disableLiveReload) {
+              loader.watch(function (loadPromise) {
+                queue.add( /*#__PURE__*/_asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
+                  var activity;
+                  return regeneratorRuntime.wrap(function _callee$(_context) {
+                    while (1) {
+                      switch (_context.prev = _context.next) {
+                        case 0:
+                          activity = reporter.activityTimer("detected change in DatoCMS content, loading new data", {
+                            parentSpan: parentSpan
+                          });
+                          activity.start();
+                          _context.next = 4;
+                          return loadPromise;
+
+                        case 4:
+                          activity.end();
+
+                        case 5:
+                        case "end":
+                          return _context.stop();
+                      }
+                    }
+                  }, _callee);
+                })));
+              });
+            }
 
           case 56:
           case "end":
-            return _context.stop();
+            return _context2.stop();
         }
       }
-    }, _callee);
+    }, _callee2);
   }));
 
   return function (_x, _x2) {

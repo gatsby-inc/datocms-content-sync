@@ -12,14 +12,14 @@ var _require = require('humps'),
 module.exports = function () {
   return {
     type: '[DatoCmsFileField]',
-    resolveForSimpleField: function resolveForSimpleField(fieldValue, context, node) {
+    resolveForSimpleField: function resolveForSimpleField(fieldValue, context, node, i18n, generateType) {
       if (!fieldValue) {
         return null;
       }
 
       return fieldValue.map(function (fileField) {
         var upload = context.nodeModel.getNodeById({
-          id: "DatoCmsAsset-".concat(fileField.upload_id)
+          id: "".concat(generateType('Asset'), "-").concat(fileField.upload_id)
         });
         var uploadDefaultFieldMetadata = upload.entityPayload.attributes.default_field_metadata[node.locale];
         return _objectSpread({}, upload, {

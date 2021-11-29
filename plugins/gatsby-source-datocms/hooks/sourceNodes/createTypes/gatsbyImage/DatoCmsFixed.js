@@ -8,7 +8,7 @@ module.exports = function (_ref) {
   var actions = _ref.actions,
       schema = _ref.schema,
       store = _ref.store,
-      cacheDir = _ref.cacheDir;
+      cache = _ref.cache;
   actions.createTypes([schema.buildObjectType({
     name: 'DatoCmsFixed',
     extensions: {
@@ -18,13 +18,13 @@ module.exports = function (_ref) {
       base64: {
         type: 'String',
         resolve: function resolve(image) {
-          return getBase64(image, cacheDir);
+          return getBase64(image, cache);
         }
       },
       tracedSVG: {
         type: 'String',
         resolve: function resolve(image) {
-          return getTracedSVG(image, cacheDir);
+          return getTracedSVG(image, cache);
         }
       },
       aspectRatio: 'Float',

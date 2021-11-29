@@ -54,7 +54,7 @@ var generateImageSource = function generateImageSource(baseURL, width, height, f
 };
 
 module.exports = function (_ref2) {
-  var cacheDir = _ref2.cacheDir;
+  var cache = _ref2.cache;
   var gatsbyPluginImageFound = false;
 
   try {
@@ -110,12 +110,13 @@ module.exports = function (_ref2) {
               // be presented to the final user
 
               if (finalSize.height === image.height && finalSize.width == image.width) {
-                if (props.layout === 'FIXED' && props.width && props.height) {
+                if (['FIXED', 'fixed'].includes(props.layout) && props.width && props.height) {
                   // we give the source image the requested aspect ratio
                   imgixParams.ar = "".concat(props.width, ":").concat(props.height);
                   imgixParams.fit = 'crop';
                   finalSize = getSizeAfterTransformations(image.width, image.height, imgixParams);
-                } else if (props.layout === 'CONSTRAINED' && (props.width || props.height)) {
+                } else if ( // different gatsby-plugin-image return different values for the GatsbyImageLayout type
+                ['CONSTRAINED', 'constrained'].includes(props.layout) && (props.width || props.height)) {
                   // we give the source image the requested width/height as their maximum value
                   if (props.w) {
                     imgixParams.w = props.width;
@@ -160,7 +161,7 @@ module.exports = function (_ref2) {
               }
 
               _context.next = 16;
-              return getBase64(placeholderImageData, cacheDir);
+              return getBase64(placeholderImageData, cache);
 
             case 16:
               otherProps.placeholderURL = _context.sent;
@@ -174,7 +175,7 @@ module.exports = function (_ref2) {
               }
 
               _context.next = 22;
-              return getTracedSVG(placeholderImageData, cacheDir);
+              return getTracedSVG(placeholderImageData, cache);
 
             case 22:
               otherProps.placeholderURL = _context.sent;

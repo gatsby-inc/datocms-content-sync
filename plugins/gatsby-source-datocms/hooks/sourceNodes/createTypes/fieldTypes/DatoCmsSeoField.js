@@ -2,9 +2,10 @@
 
 module.exports = function (_ref) {
   var actions = _ref.actions,
-      schema = _ref.schema;
+      schema = _ref.schema,
+      generateType = _ref.generateType;
   actions.createTypes([schema.buildObjectType({
-    name: 'DatoCmsSeoField',
+    name: generateType('SeoField'),
     extensions: {
       infer: false
     },
@@ -13,11 +14,11 @@ module.exports = function (_ref) {
       description: 'String',
       twitterCard: 'String',
       image: {
-        type: 'DatoCmsAsset',
+        type: generateType('Asset'),
         resolve: function resolve(fieldValue, args, context) {
           if (fieldValue && fieldValue.image) {
             return context.nodeModel.getNodeById({
-              id: "DatoCmsAsset-".concat(fieldValue.image)
+              id: "".concat(generateType('Asset'), "-").concat(fieldValue.image)
             });
           }
         }

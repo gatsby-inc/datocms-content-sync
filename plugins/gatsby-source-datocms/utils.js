@@ -1,10 +1,20 @@
 "use strict";
 
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
+var _excluded = ["cache", "loadStateFromCache"];
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+function _construct(Parent, args, Class) { if (_isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
 var _require = require('datocms-client'),
     SiteClient = _require.SiteClient,
@@ -14,90 +24,100 @@ var CLIENT_HEADERS = {
   'X-Reason': 'dump',
   'X-SSG': 'gatsby'
 };
-var GATSBY_CLOUD = process.env.GATSBY_CLOUD;
-var GATSBY_EXECUTING_COMMAND = process.env.gatsby_executing_command;
-var clients = {};
 var loaders = {};
 
-function getClient(options) {
-  var apiToken = options.apiToken,
-      apiUrl = options.apiUrl,
-      environment = options.environment;
-  var key = JSON.stringify({
-    apiToken: apiToken,
-    apiUrl: apiUrl,
-    environment: environment
-  });
+function getLoader(_x) {
+  return _getLoader.apply(this, arguments);
+}
 
-  if (clients[key]) {
-    return clients[key];
-  }
+function _getLoader() {
+  _getLoader = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref) {
+    var cache, loadStateFromCache, options, apiToken, apiUrl, environment, logApiCalls, pageSize, previewMode, clientOptions, loaderArgs, key, loader;
+    return regeneratorRuntime.wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            cache = _ref.cache, loadStateFromCache = _ref.loadStateFromCache, options = _objectWithoutProperties(_ref, _excluded);
+            apiToken = options.apiToken, apiUrl = options.apiUrl, environment = options.environment, logApiCalls = options.logApiCalls, pageSize = options.pageSize, previewMode = options.previewMode;
+            clientOptions = {
+              headers: CLIENT_HEADERS
+            };
 
-  var client = apiUrl ? new SiteClient(apiToken, _objectSpread({}, CLIENT_HEADERS, {
-    environment: environment
-  }), apiUrl) : new SiteClient(apiToken, _objectSpread({}, CLIENT_HEADERS, {
-    environment: environment
+            if (options.environment) {
+              clientOptions.environment = environment;
+            }
+
+            if (options.baseUrl) {
+              clientOptions.baseUrl = apiUrl;
+            }
+
+            if (options.logApiCalls) {
+              clientOptions.logApiCalls = logApiCalls;
+            }
+
+            loaderArgs = [[apiToken, clientOptions], previewMode, environment, {
+              pageSize: pageSize
+            }];
+            key = JSON.stringify(loaderArgs);
+
+            if (!loaders[key]) {
+              _context.next = 10;
+              break;
+            }
+
+            return _context.abrupt("return", loaders[key]);
+
+          case 10:
+            loader = _construct(Loader, loaderArgs);
+
+            if (!loadStateFromCache) {
+              _context.next = 14;
+              break;
+            }
+
+            _context.next = 14;
+            return loader.loadStateFromCache(cache);
+
+          case 14:
+            loaders[key] = loader;
+            return _context.abrupt("return", loader);
+
+          case 16:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee);
   }));
-  clients[key] = client;
-  return client;
+  return _getLoader.apply(this, arguments);
 }
 
-function getLoader(options) {
-  var apiToken = options.apiToken,
-      apiUrl = options.apiUrl,
-      previewMode = options.previewMode,
-      environment = options.environment;
-  var key = JSON.stringify({
-    apiToken: apiToken,
-    apiUrl: apiUrl,
-    previewMode: previewMode,
-    environment: environment
-  });
+var nodeManifestWarningWasLogged;
 
-  if (loaders[key]) {
-    return loaders[key];
-  }
-
-  var loader = new Loader(getClient({
-    apiToken: apiToken,
-    apiUrl: apiUrl,
-    environment: environment
-  }), GATSBY_CLOUD && GATSBY_EXECUTING_COMMAND === 'develop' || previewMode, environment);
-  loaders[key] = loader;
-  return loader;
-}
-
-var FORTY_EIGHT_HOURS = 1000 * 60 * 60 * 48; // ms * sec * min * hr
-
-var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
-  var node = _ref.node,
-      context = _ref.context;
+var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref2) {
+  var node = _ref2.node,
+      context = _ref2.context;
 
   try {
     var _node$entityPayload, _node$entityPayload$m;
 
     var unstable_createNodeManifest = context.actions.unstable_createNodeManifest;
     var createNodeManifestIsSupported = typeof unstable_createNodeManifest === "function";
-    var nodeNeedsManifestCreated = (node === null || node === void 0 ? void 0 : (_node$entityPayload = node.entityPayload) === null || _node$entityPayload === void 0 ? void 0 : (_node$entityPayload$m = _node$entityPayload.meta) === null || _node$entityPayload$m === void 0 ? void 0 : _node$entityPayload$m.updated_at) && (node === null || node === void 0 ? void 0 : node.locale);
+    var updatedAt = node === null || node === void 0 ? void 0 : (_node$entityPayload = node.entityPayload) === null || _node$entityPayload === void 0 ? void 0 : (_node$entityPayload$m = _node$entityPayload.meta) === null || _node$entityPayload$m === void 0 ? void 0 : _node$entityPayload$m.updated_at;
+    var nodeNeedsManifestCreated = updatedAt && (node === null || node === void 0 ? void 0 : node.locale);
     var shouldCreateNodeManifest = createNodeManifestIsSupported && nodeNeedsManifestCreated;
 
     if (shouldCreateNodeManifest) {
-      var _node$entityPayload2;
-
       // Example manifestId: "34324203-2021-07-08T21:52:28.791+01:00"
-      var nodeWasRecentlyUpdated = Date.now() - new Date(node.entityPayload.meta.updated_at).getTime() <= ( // Default to only create manifests for items updated in last 48 hours
-      process.env.CONTENT_SYNC_DATOCMS_HOURS_SINCE_ENTRY_UPDATE || FORTY_EIGHT_HOURS); // We need to create manifests on cold builds, this prevents from creating many more
-      // manifests than we actually need
-
-      if (!nodeWasRecentlyUpdated) return;
-      var manifestId = "".concat(node === null || node === void 0 ? void 0 : (_node$entityPayload2 = node.entityPayload) === null || _node$entityPayload2 === void 0 ? void 0 : _node$entityPayload2.id, "-").concat(node.entityPayload.meta.updated_at);
-      console.info("DatoCMS: Creating node manifest with id ".concat(manifestId));
+      var manifestId = "".concat(node.entityPayload.id, "-").concat(updatedAt);
       unstable_createNodeManifest({
         manifestId: manifestId,
-        node: node
+        node: node,
+        updatedAt: updatedAt
       });
-    } else if (!createNodeManifestIsSupported) {
+    } else if (!createNodeManifestIsSupported && !nodeManifestWarningWasLogged) {
       console.warn("DatoCMS: Your version of Gatsby core doesn't support Content Sync (via the unstable_createNodeManifest action). Please upgrade to the latest version to use Content Sync in your site.");
+      nodeManifestWarningWasLogged = true;
     }
   } catch (e) {
     console.info("Cannot create node manifest", e.message);
@@ -105,7 +125,6 @@ var datocmsCreateNodeManifest = function datocmsCreateNodeManifest(_ref) {
 };
 
 module.exports = {
-  getClient: getClient,
   getLoader: getLoader,
   datocmsCreateNodeManifest: datocmsCreateNodeManifest
 };
