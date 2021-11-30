@@ -31,6 +31,7 @@ module.exports = function (entity, context) {
   var nodesToCreate = Array.isArray(result) ? result : [result];
   nodesToCreate.map(function (node) {
     context.actions.createNode(node);
+    console.log(context.previewMode);
 
     if (context.previewMode) {
       datocmsCreateNodeManifest({

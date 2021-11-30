@@ -25,6 +25,7 @@ module.exports = (entity, context) => {
 
   nodesToCreate.map(node => {
     context.actions.createNode(node);
+    console.log(context.previewMode);
     if (context.previewMode) {
       datocmsCreateNodeManifest({
         node,
